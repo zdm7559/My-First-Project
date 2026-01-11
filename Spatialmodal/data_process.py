@@ -170,6 +170,8 @@ class imgDataset(Dataset):
         adata.obsm['patches'] = patches
         self.adata = adata
         self.img_transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize((target_size, target_size)),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 

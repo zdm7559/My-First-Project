@@ -29,24 +29,24 @@ class GCN_Encoder(torch.nn.Module):
             x = self.activation(self.conv[i](x, edge_index))
         return x
 
-def get_proto_norm(feature, centroid, ps_label, num_protos):
-    num_data = feature.shape[0]
-    each_cluster_num = np.zeros([num_protos])
+# def get_proto_norm(feature, centroid, ps_label, num_protos):
+#     num_data = feature.shape[0]
+#     each_cluster_num = np.zeros([num_protos])
 
-    for i in range(num_protos):
-        each_cluster_num[i] = np.sum(ps_label == i)
+#     for i in range(num_protos):
+#         each_cluster_num[i] = np.sum(ps_label == i)
 
-    proto_norm_term = np.zeros([num_protos])
-    for i in range(num_protos):
-        norm_sum = 0
-        for j in range(num_data):
-            if ps_label[j] == i:
-                norm_sum = norm_sum + LA.norm(feature[j] - centroid[i], 2)
-        proto_norm_term[i] = norm_sum / (each_cluster_num[i] * np.log2(each_cluster_num[i] + 10))
-    proto_norm = torch.Tensor(proto_norm_term)
-    return proto_norm
+#     proto_norm_term = np.zeros([num_protos])
+#     for i in range(num_protos):
+#         norm_sum = 0
+#         for j in range(num_data):
+#             if ps_label[j] == i:
+#                 norm_sum = norm_sum + LA.norm(feature[j] - centroid[i], 2)
+#         proto_norm_term[i] = norm_sum / (each_cluster_num[i] * np.log2(each_cluster_num[i] + 10))
+#     proto_norm = torch.Tensor(proto_norm_term)
+#     return proto_norm
 
-def get_proto_loss(feature, centroid, ps_label, proto_norm):
+def get_proto_loss(feature, centroid, ps_label):
     feature_norm = torch.norm(feature, dim=-1)
     feature = torch.div(feature, feature_norm.unsqueeze(1))
     centroid_norm = torch.norm(centroid, dim=-1)
@@ -298,8 +298,7 @@ class fusion(Module):
         logvar = self.vgae_logvar(hidden, adj)
         vgae_z = self.reparameterize(mu, logvar)
 
-        z_fusion = torch.cat((z_gene, vgae_z), dim=1)
-        z_latent = self.fusion_linear(z_fusion)
+        
 
 
         loss_vgae = gcn_loss(
@@ -310,9 +309,7 @@ class fusion(Module):
             n_nodes=self.cell_nums,
             norm=norm_value,
         )
-        rec_gene = self.decoder_gene(z_latent)
-        rec_gene_mask = self.decoder_gene(z_gene)
-
+        
         adj_1 = dropout_adj(self.edge_index, p=self.drop_edge_rate_1)[0].to(self.device)
         adj_2 = dropout_adj(self.edge_index, p=self.drop_edge_rate_2)[0].to(self.device)
         x_1 = drop_feature(z_gene, self.drop_feature_rate_1).to(self.device)
@@ -328,12 +325,19 @@ class fusion(Module):
         label_kmeans = kmeans.labels_
         centers = np.array([np.mean(z_clu_np[label_kmeans == i, :], axis=0) for i in range(self.num_protos)])
         label_kmeans = label_kmeans[:, np.newaxis]
-        proto_norm = get_proto_norm(z_clu_np, centers, label_kmeans, self.num_protos)
+        # proto_norm = get_proto_norm(z_clu_np, centers, label_kmeans, self.num_protos)
         centers = torch.Tensor(centers).to(self.device)
         label_kmeans = torch.Tensor(label_kmeans).long().to(self.device)
-        proto_norm = torch.Tensor(proto_norm).to(self.device)
-        loss_proto = get_proto_loss(z_clu, centers, label_kmeans, proto_norm)
+        # proto_norm = torch.Tensor(proto_norm).to(self.device)
+        # loss_proto = get_proto_loss(z_clu, centers, label_kmeans, proto_norm)
+        loss_proto = get_proto_loss(z_clu, centers, label_kmeans)
 
+        z_fusion = torch.cat((z_gene, vgae_z), dim=1)
+        z_latent = self.fusion_linear(z_fusion)
+        
+        rec_gene = self.decoder_gene(z_latent)
+        rec_gene_mask = self.decoder_gene(z_gene)
+        
         return z_latent, rec_gene, mask_nodes, keep_nodes, rec_gene_mask, loss_node, loss_proto, loss_vgae
 
 
