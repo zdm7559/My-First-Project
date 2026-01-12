@@ -1,4 +1,4 @@
-# My-First-Project
+# SpatialModal
 
 ![SpatialModal Overview](./SpatialModal_Overview.png)
 ## Overview
