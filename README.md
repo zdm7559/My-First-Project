@@ -50,6 +50,5 @@ conda env create -f environment.yml
 
 
 ## Tutorial
-Read the [Tutorial](https://github.com/xingyili/SpatialModal/tree/main/Tutorial) for detailed tutorials.  
-
+Read the `.\Tutorial` for detailed tutorials.  
 
